@@ -1,0 +1,140 @@
+import { NextResponse } from 'next/server'
+import { supabase } from '@/lib/supabase'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import bcrypt from 'bcryptjs'
+
+export async function POST(req: Request) {
+  const session = await getServerSession(authOptions)
+  if (!session || session.user.role !== 'ADMIN') {
+    return new NextResponse('Unauthorized', { status: 401 })
+  }
+
+  try {
+    const { name, enrollmentNumber, password } = await req.json()
+
+    if (!name || !enrollmentNumber || !password) {
+      return new NextResponse('Missing required fields', { status: 400 })
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10)
+
+    // Create virtual email from enrollment number
+    const virtualEmail = `${enrollmentNumber}@student.attendx.edu`
+
+    // 1. Create User
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .insert([{ name, email: virtualEmail, password: hashedPassword, role: 'STUDENT' }])
+      .select()
+      .single()
+
+    if (userError) throw userError
+
+    // 2. Create Student Profile (no class assignment — that happens during class creation)
+    const { error: studentError } = await supabase
+      .from('students')
+      .insert([{
+        user_id: user.id,
+        student_id: enrollmentNumber
+      }])
+
+    if (studentError) throw studentError
+
+    return NextResponse.json(user)
+  } catch (error) {
+    console.error(error)
+    return new NextResponse('Internal Error', { status: 500 })
+  }
+}
+
+export async function GET() {
+  const session = await getServerSession(authOptions)
+  if (!session || session.user.role !== 'ADMIN') {
+    return new NextResponse('Unauthorized', { status: 401 })
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('students')
+      .select('*, user:users(id, name, email, created_at), class:classes(id, name, year, department)')
+
+    if (error) throw error
+
+    return NextResponse.json(data)
+  } catch (error) {
+    console.error(error)
+    return new NextResponse('Internal Error', { status: 500 })
+  }
+}
+
+
+export async function PUT(req: Request) {
+  const session = await getServerSession(authOptions)
+  if (!session || session.user.role !== 'ADMIN') {
+    return new NextResponse('Unauthorized', { status: 401 })
+  }
+
+  try {
+    const { id, userId, name, enrollmentNumber } = await req.json()
+
+    if (!id || !userId || !name || !enrollmentNumber) {
+      return new NextResponse('Missing required fields', { status: 400 })
+    }
+
+    // 1. Update User
+    const { error: userError } = await supabase
+      .from('users')
+      .update({ name })
+      .eq('id', userId)
+
+    if (userError) throw userError
+
+    // 2. Update Student Profile
+    const { error: studentError } = await supabase
+      .from('students')
+      .update({
+        student_id: enrollmentNumber
+      })
+      .eq('id', id)
+
+    if (studentError) throw studentError
+
+    return NextResponse.json({ message: 'Student updated successfully' })
+  } catch (error) {
+    console.error(error)
+    return new NextResponse('Internal Error', { status: 500 })
+  }
+}
+
+export async function DELETE(req: Request) {
+  const session = await getServerSession(authOptions)
+  if (!session || session.user.role !== 'ADMIN') {
+    return new NextResponse('Unauthorized', { status: 401 })
+  }
+
+  try {
+    const { searchParams } = new URL(req.url)
+    const id = searchParams.get('id')
+    const userId = searchParams.get('userId')
+
+    if (!id || !userId) {
+      return new NextResponse('Missing id or userId', { status: 400 })
+    }
+
+    const { error: userError } = await supabase
+      .from('users')
+      .delete()
+      .eq('id', userId)
+
+    if (userError) {
+      console.warn("User deletion failed:", userError);
+      return new NextResponse('Cannot delete user (might have active relations)', { status: 400 })
+    }
+
+    return NextResponse.json({ message: 'Student deleted successfully' })
+  } catch (error) {
+    console.error(error)
+    return new NextResponse('Internal Error', { status: 500 })
+  }
+}

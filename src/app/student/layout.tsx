@@ -1,0 +1,29 @@
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import Sidebar from "@/components/Sidebar";
+import TopHeader from "@/components/TopHeader";
+
+export default async function StudentLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const session = await getServerSession(authOptions);
+
+  if (!session || session.user.role !== "STUDENT") {
+    return redirect("/login");
+  }
+
+  return (
+    <div className="flex h-screen bg-transparent overflow-hidden">
+      <Sidebar role="STUDENT" />
+      <main className="flex-1 overflow-y-auto px-8 py-8 transition-all duration-300 relative z-10">
+        <div className="mx-auto max-w-7xl">
+          <TopHeader />
+          {children}
+        </div>
+      </main>
+    </div>
+  );
+}
