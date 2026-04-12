@@ -11,7 +11,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { name, enrollmentNumber, password } = await req.json()
+    const { name, enrollmentNumber, password, courseId, branchId, year } = await req.json()
 
     if (!name || !enrollmentNumber || !password) {
       return new NextResponse('Missing required fields', { status: 400 })
@@ -31,13 +31,18 @@ export async function POST(req: Request) {
 
     if (userError) throw userError
 
-    // 2. Create Student Profile (no class assignment — that happens during class creation)
+    // 2. Create Student Profile with course, branch, year
+    const studentInsert: any = {
+      user_id: user.id,
+      student_id: enrollmentNumber,
+    }
+    if (courseId) studentInsert.course_id = courseId
+    if (branchId) studentInsert.branch_id = branchId
+    if (year) studentInsert.year = year
+
     const { error: studentError } = await supabase
       .from('students')
-      .insert([{
-        user_id: user.id,
-        student_id: enrollmentNumber
-      }])
+      .insert([studentInsert])
 
     if (studentError) throw studentError
 
@@ -76,7 +81,7 @@ export async function PUT(req: Request) {
   }
 
   try {
-    const { id, userId, name, enrollmentNumber } = await req.json()
+    const { id, userId, name, enrollmentNumber, courseId, branchId, year } = await req.json()
 
     if (!id || !userId || !name || !enrollmentNumber) {
       return new NextResponse('Missing required fields', { status: 400 })
@@ -90,12 +95,17 @@ export async function PUT(req: Request) {
 
     if (userError) throw userError
 
-    // 2. Update Student Profile
+    // 2. Update Student Profile with course, branch, year
+    const studentUpdate: any = {
+      student_id: enrollmentNumber,
+      course_id: courseId || null,
+      branch_id: branchId || null,
+      year: year || null,
+    }
+
     const { error: studentError } = await supabase
       .from('students')
-      .update({
-        student_id: enrollmentNumber
-      })
+      .update(studentUpdate)
       .eq('id', id)
 
     if (studentError) throw studentError

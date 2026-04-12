@@ -1,9 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, UserPlus, X, Key, Eye, EyeOff, Edit2, Trash2, AlertTriangle } from "lucide-react";
 import toast from "react-hot-toast";
+
+interface CourseData {
+  id: string;
+  name: string;
+  branches: { id: string; name: string; course_id: string }[];
+}
 
 export default function AdminStudentsPage() {
   const [students, setStudents] = useState<any[]>([]);
@@ -17,25 +23,45 @@ export default function AdminStudentsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
+  const [courses, setCourses] = useState<CourseData[]>([]);
+
   const [formData, setFormData] = useState({
     id: "",
     userId: "",
     name: "",
     enrollmentNumber: "",
     password: "",
+    courseId: "",
+    branchId: "",
+    year: "",
   });
 
   const [newPassword, setNewPassword] = useState("");
   const [showNewPassword, setShowNewPassword] = useState(false);
 
+  // Get branches filtered by selected course
+  const filteredBranches = useMemo(() => {
+    if (!formData.courseId) return [];
+    const course = courses.find((c) => c.id === formData.courseId);
+    return course?.branches || [];
+  }, [formData.courseId, courses]);
+
   const fetchData = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/admin/students");
-      const data = await res.json();
-      setStudents(data);
+      const [studentsRes, coursesRes] = await Promise.all([
+        fetch("/api/admin/students"),
+        fetch("/api/admin/courses"),
+      ]);
+      const studentsData = await studentsRes.json();
+      setStudents(studentsData);
+
+      if (coursesRes.ok) {
+        const coursesData = await coursesRes.json();
+        setCourses(coursesData);
+      }
     } catch (err) {
-      toast.error("Failed to load students");
+      toast.error("Failed to load data");
     } finally {
       setLoading(false);
     }
@@ -61,7 +87,7 @@ export default function AdminStudentsPage() {
       if (res.ok) {
         toast.success(`Student ${isEdit ? "updated" : "added"} successfully!`);
         setShowAddModal(false);
-        setFormData({ id: "", userId: "", name: "", enrollmentNumber: "", password: "" });
+        setFormData({ id: "", userId: "", name: "", enrollmentNumber: "", password: "", courseId: "", branchId: "", year: "" });
         fetchData();
       } else {
         const errData = await res.text();
@@ -116,6 +142,13 @@ export default function AdminStudentsPage() {
     }
   };
 
+  // Helper to get course/branch name
+  const getCourseName = (courseId: string) => courses.find((c) => c.id === courseId)?.name || "—";
+  const getBranchName = (courseId: string, branchId: string) => {
+    const course = courses.find((c) => c.id === courseId);
+    return course?.branches?.find((b) => b.id === branchId)?.name || "—";
+  };
+
   const filtered = students.filter((s) => {
     const q = searchQuery.toLowerCase();
     return (
@@ -135,7 +168,7 @@ export default function AdminStudentsPage() {
         <button
           onClick={() => {
             setModalMode("add");
-            setFormData({ id: "", userId: "", name: "", enrollmentNumber: "", password: "" });
+            setFormData({ id: "", userId: "", name: "", enrollmentNumber: "", password: "", courseId: "", branchId: "", year: "" });
             setShowAddModal(true);
           }}
           className="flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-emerald-700 active:scale-95 shadow-lg shadow-emerald-200"
@@ -166,8 +199,10 @@ export default function AdminStudentsPage() {
               <tr className="bg-slate-50/50">
                 <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Student</th>
                 <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Enrollment No.</th>
-                <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Class</th>
+                <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Course</th>
+                <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Branch</th>
                 <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Year</th>
+                <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Class</th>
                 <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Actions</th>
               </tr>
             </thead>
@@ -179,8 +214,10 @@ export default function AdminStudentsPage() {
                     <tr key={i} className="animate-pulse">
                       <td className="px-6 py-4"><div className="h-10 w-40 bg-slate-100 rounded" /></td>
                       <td className="px-6 py-4"><div className="h-6 w-24 bg-slate-100 rounded" /></td>
-                      <td className="px-6 py-4"><div className="h-6 w-28 bg-slate-100 rounded" /></td>
                       <td className="px-6 py-4"><div className="h-6 w-20 bg-slate-100 rounded" /></td>
+                      <td className="px-6 py-4"><div className="h-6 w-24 bg-slate-100 rounded" /></td>
+                      <td className="px-6 py-4"><div className="h-6 w-16 bg-slate-100 rounded" /></td>
+                      <td className="px-6 py-4"><div className="h-6 w-28 bg-slate-100 rounded" /></td>
                       <td className="px-6 py-4"><div className="h-8 w-24 bg-slate-100 ml-auto rounded" /></td>
                     </tr>
                   ))
@@ -206,12 +243,22 @@ export default function AdminStudentsPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${student.class?.name ? 'bg-blue-50 text-blue-700' : 'bg-slate-50 text-slate-400'}`}>
-                        {student.class?.name || "Not Assigned"}
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${student.course_id ? 'bg-violet-50 text-violet-700' : 'bg-slate-50 text-slate-400'}`}>
+                        {student.course_id ? getCourseName(student.course_id) : "—"}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${student.branch_id ? 'bg-purple-50 text-purple-700' : 'bg-slate-50 text-slate-400'}`}>
+                        {student.branch_id && student.course_id ? getBranchName(student.course_id, student.branch_id) : "—"}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-slate-600">
-                      {student.class?.year || "—"}
+                      {student.year || "—"}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${student.class?.name ? 'bg-blue-50 text-blue-700' : 'bg-slate-50 text-slate-400'}`}>
+                        {student.class?.name || "Not Assigned"}
+                      </span>
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex justify-end gap-2">
@@ -234,6 +281,9 @@ export default function AdminStudentsPage() {
                               name: student.user?.name || "",
                               enrollmentNumber: student.student_id || "",
                               password: "",
+                              courseId: student.course_id || "",
+                              branchId: student.branch_id || "",
+                              year: student.year || "",
                             });
                             setShowAddModal(true);
                           }}
@@ -258,7 +308,7 @@ export default function AdminStudentsPage() {
                 ))}
               {!loading && filtered.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-slate-400 text-sm">
+                  <td colSpan={7} className="px-6 py-12 text-center text-slate-400 text-sm">
                     No students found.
                   </td>
                 </tr>
@@ -268,7 +318,7 @@ export default function AdminStudentsPage() {
         </div>
       </div>
 
-      {/* Add/Edit Student Modal — Only Name, Enrollment & Password */}
+      {/* Add/Edit Student Modal */}
       <AnimatePresence>
         {showAddModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
@@ -281,7 +331,7 @@ export default function AdminStudentsPage() {
               <div className="mb-6 flex items-center justify-between">
                 <div>
                   <h3 className="text-xl font-bold text-slate-800">{modalMode === "add" ? "Add New Student" : "Edit Student"}</h3>
-                  <p className="text-sm text-slate-500">{modalMode === "add" ? "Create a student account. Assign to a class later from the Classes page." : "Update name and enrollment number."}</p>
+                  <p className="text-sm text-slate-500">{modalMode === "add" ? "Create a student account. Assign to a class later from the Classes page." : "Update student details."}</p>
                 </div>
                 <button
                   onClick={() => setShowAddModal(false)}
@@ -292,6 +342,7 @@ export default function AdminStudentsPage() {
               </div>
 
               <form onSubmit={handleSaveStudent} className="space-y-4">
+                {/* Full Name */}
                 <div>
                   <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Full Name</label>
                   <input
@@ -303,6 +354,8 @@ export default function AdminStudentsPage() {
                     className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500/20"
                   />
                 </div>
+
+                {/* Enrollment Number */}
                 <div>
                   <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Enrollment Number</label>
                   <input
@@ -314,6 +367,55 @@ export default function AdminStudentsPage() {
                     className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500/20"
                   />
                 </div>
+
+                {/* Row 1: Course + Branch side-by-side */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Course</label>
+                    <select
+                      value={formData.courseId}
+                      onChange={(e) => setFormData({ ...formData, courseId: e.target.value, branchId: "" })}
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500/20"
+                    >
+                      <option value="">Select Course</option>
+                      {courses.map((c) => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Branch</label>
+                    <select
+                      value={formData.branchId}
+                      onChange={(e) => setFormData({ ...formData, branchId: e.target.value })}
+                      disabled={!formData.courseId}
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <option value="">{formData.courseId ? "Select Branch" : "Select course first"}</option>
+                      {filteredBranches.map((b) => (
+                        <option key={b.id} value={b.id}>{b.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Row 2: Year */}
+                <div>
+                  <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Year</label>
+                  <select
+                    value={formData.year}
+                    onChange={(e) => setFormData({ ...formData, year: e.target.value })}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500/20"
+                  >
+                    <option value="">Select Year</option>
+                    <option value="1st Year">1st Year</option>
+                    <option value="2nd Year">2nd Year</option>
+                    <option value="3rd Year">3rd Year</option>
+                    <option value="4th Year">4th Year</option>
+                  </select>
+                </div>
+
+                {/* Password (only for add mode) */}
                 {modalMode === "add" && (
                   <div>
                     <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Default Password</label>
