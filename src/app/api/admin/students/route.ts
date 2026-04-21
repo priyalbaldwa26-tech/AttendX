@@ -11,7 +11,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { name, enrollmentNumber, password, courseId, branchId, year } = await req.json()
+    const { name, enrollmentNumber, password, courseId, branchId, year, contactEmail } = await req.json()
 
     if (!name || !enrollmentNumber || !password) {
       return new NextResponse('Missing required fields', { status: 400 })
@@ -39,6 +39,7 @@ export async function POST(req: Request) {
     if (courseId) studentInsert.course_id = courseId
     if (branchId) studentInsert.branch_id = branchId
     if (year) studentInsert.year = year
+    if (contactEmail) studentInsert.contact_email = contactEmail
 
     const { error: studentError } = await supabase
       .from('students')
@@ -81,7 +82,7 @@ export async function PUT(req: Request) {
   }
 
   try {
-    const { id, userId, name, enrollmentNumber, courseId, branchId, year } = await req.json()
+    const { id, userId, name, enrollmentNumber, courseId, branchId, year, contactEmail } = await req.json()
 
     if (!id || !userId || !name || !enrollmentNumber) {
       return new NextResponse('Missing required fields', { status: 400 })
@@ -101,6 +102,7 @@ export async function PUT(req: Request) {
       course_id: courseId || null,
       branch_id: branchId || null,
       year: year || null,
+      contact_email: contactEmail || null,
     }
 
     const { error: studentError } = await supabase

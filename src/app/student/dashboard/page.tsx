@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Flame, Bell, TrendingUp, CalendarCheck, CheckCircle, XCircle, BookOpen } from "lucide-react";
+import { Flame, Bell, TrendingUp, CalendarCheck, CheckCircle, XCircle, BookOpen, AlertTriangle, ShieldAlert } from "lucide-react";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, Filler } from "chart.js";
 import { Doughnut, Line } from "react-chartjs-2";
 import socket from "@/lib/socketClient";
@@ -134,6 +134,56 @@ export default function StudentDashboard() {
 
   return (
     <div className="h-full w-full space-y-4">
+      {/* ──── Attendance Warning Banners ──── */}
+      {!loading && overall < 75 && (
+        <div className="rounded-2xl bg-gradient-to-r from-red-500 to-rose-600 p-4 shadow-lg animate-pulse-slow">
+          <div className="flex items-center gap-3">
+            <div className="h-12 w-12 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+              <ShieldAlert size={24} className="text-white" />
+            </div>
+            <div>
+              <h3 className="text-white font-bold text-sm">🚫 Debarment Warning</h3>
+              <p className="text-red-100 text-xs mt-0.5">
+                Your attendance is <strong className="text-white">{overall}%</strong> which is below the required 75%. 
+                You are at risk of being debarred from examinations. Please attend classes regularly.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!loading && overall >= 75 && overall < 80 && (
+        <div className="rounded-2xl bg-gradient-to-r from-amber-400 to-orange-500 p-4 shadow-lg">
+          <div className="flex items-center gap-3">
+            <div className="h-12 w-12 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+              <AlertTriangle size={24} className="text-white" />
+            </div>
+            <div>
+              <h3 className="text-white font-bold text-sm">⚠️ Low Attendance Alert</h3>
+              <p className="text-amber-100 text-xs mt-0.5">
+                Your attendance is <strong className="text-white">{overall}%</strong> — dangerously close to the 75% threshold. 
+                Maintain regular attendance to avoid debarment.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!loading && streak === 0 && data && (
+        <div className="rounded-2xl bg-gradient-to-r from-slate-600 to-slate-700 p-3 shadow-md">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
+              <AlertTriangle size={20} className="text-amber-300" />
+            </div>
+            <div>
+              <p className="text-white text-xs font-semibold">
+                Your attendance streak is broken. Mark your presence today to start a new streak! 🔥
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Top Row */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {/* Attendance Donut */}
