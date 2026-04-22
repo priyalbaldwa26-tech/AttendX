@@ -64,6 +64,7 @@ export async function GET() {
     const { data, error } = await supabase
       .from('students')
       .select('*, user:users(id, name, email, created_at), class:classes(id, name, year, department)')
+      .order('student_id', { ascending: true })
 
     if (error) throw error
 
