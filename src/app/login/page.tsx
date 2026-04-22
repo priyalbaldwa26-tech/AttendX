@@ -5,6 +5,7 @@ import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { Eye, EyeOff, Shield, GraduationCap, UserCircle } from "lucide-react";
+import AttendXLogo from "@/components/AttendXLogo";
 
 type Role = "Admin" | "Teacher" | "Student";
 
@@ -71,9 +72,12 @@ export default function LoginPage() {
 
       {/* Login Card */}
       <div className="relative w-full max-w-sm glass-card p-8 z-10">
-        <h1 className="text-2xl font-bold text-center text-slate-900 mb-6">
-          Log in
-        </h1>
+        <div className="flex flex-col items-center mb-6">
+          <AttendXLogo size={52} className="mb-3" />
+          <h1 className="text-2xl font-bold text-center text-slate-900">
+            Log in to <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#0891b2] to-[#14b8a6]">AttendX</span>
+          </h1>
+        </div>
 
         <form onSubmit={handleLogin} className="space-y-4">
           {/* Identifier (Email / Teacher ID / Enrollment Number) */}

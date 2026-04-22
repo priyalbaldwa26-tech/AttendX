@@ -18,6 +18,7 @@ import {
   ChevronRight,
   Star,
 } from "lucide-react";
+import AttendXLogo from "@/components/AttendXLogo";
 
 export default function LandingPage() {
   const [mounted, setMounted] = useState(false);
@@ -38,14 +39,7 @@ export default function LandingPage() {
 
       {/* ════════════ NAVBAR ════════════ */}
       <nav className="relative z-50 flex items-center justify-between px-6 md:px-12 py-5 max-w-7xl mx-auto">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-500 text-white shadow-lg shadow-blue-500/20">
-            <CheckCircle2 size={20} />
-          </div>
-          <span className="text-xl font-extrabold text-slate-900 tracking-tight">
-            Attend<span className="text-blue-600">X</span>
-          </span>
-        </div>
+        <AttendXLogo size={38} showText textClass="text-xl" />
 
         <div className="hidden md:flex items-center gap-8">
           <a href="#features" className="text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors">
@@ -366,14 +360,7 @@ export default function LandingPage() {
       {/* ════════════ FOOTER ════════════ */}
       <footer className="relative z-10 border-t border-slate-200/50">
         <div className="max-w-7xl mx-auto px-6 md:px-12 py-10 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2.5">
-            <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-br from-blue-600 to-cyan-500 text-white">
-              <CheckCircle2 size={16} />
-            </div>
-            <span className="font-bold text-slate-700">
-              Attend<span className="text-blue-600">X</span>
-            </span>
-          </div>
+          <AttendXLogo size={30} showText textClass="text-base" />
 
           <p className="text-sm text-slate-400">
             © {new Date().getFullYear()} AttendX — Smart Attendance Management System

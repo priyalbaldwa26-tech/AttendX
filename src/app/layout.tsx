@@ -17,6 +17,13 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "AttendX | SaaS Attendance",
   description: "Real-time, scalable college attendance management system",
+  icons: {
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico", sizes: "any" },
+    ],
+    apple: "/logo.svg",
+  },
 };
 
 export default function RootLayout({
