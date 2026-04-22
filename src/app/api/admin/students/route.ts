@@ -17,19 +17,35 @@ export async function POST(req: Request) {
       return new NextResponse('Missing required fields', { status: 400 })
     }
 
+    // Check if enrollment number already exists
+    const { data: existing } = await supabase
+      .from('students')
+      .select('id')
+      .eq('student_id', enrollmentNumber)
+      .maybeSingle()
+
+    if (existing) {
+      return new NextResponse('Enrollment number already exists', { status: 400 })
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10)
 
     // Create virtual email from enrollment number
     const virtualEmail = `${enrollmentNumber}@student.attendx.edu`
 
-    // 1. Create User
+    // 1. Create User (same name is allowed)
     const { data: user, error: userError } = await supabase
       .from('users')
       .insert([{ name, email: virtualEmail, password: hashedPassword, role: 'STUDENT' }])
       .select()
       .single()
 
-    if (userError) throw userError
+    if (userError) {
+      if (userError.code === '23505') {
+        return new NextResponse('Enrollment number already exists', { status: 400 })
+      }
+      throw userError
+    }
 
     // 2. Create Student Profile with course, branch, year
     const studentInsert: any = {
