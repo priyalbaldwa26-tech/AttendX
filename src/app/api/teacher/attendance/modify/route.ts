@@ -68,11 +68,17 @@ export async function GET(req: Request) {
       return new NextResponse('Missing classId or date', { status: 400 })
     }
 
+    // Build a full-day UTC range from the plain date (YYYY-MM-DD)
+    // e.g. "2026-04-22" → gte "2026-04-22T00:00:00.000Z" and lt "2026-04-23T00:00:00.000Z"
+    const dayStart = new Date(date + 'T00:00:00.000Z').toISOString()
+    const dayEnd   = new Date(date + 'T23:59:59.999Z').toISOString()
+
     let query = supabase
       .from('attendance')
       .select('*, student:students(*, user:users(name))')
       .eq('class_id', classId)
-      .eq('date', date)
+      .gte('date', dayStart)
+      .lte('date', dayEnd)
 
     if (subjectId) {
       query = query.eq('subject_id', subjectId)

@@ -15,8 +15,8 @@ export async function POST(req: Request) {
     const body = await req.json()
     const { classId, subjectId, date, attendanceData } = body
 
-    if (!classId || !subjectId || !date || !attendanceData) {
-      return new NextResponse('Missing required fields', { status: 400 })
+    if (!classId || !date || !attendanceData) {
+      return new NextResponse('Missing required fields: classId, date, attendanceData are required', { status: 400 })
     }
 
     const { data: teacher, error: teacherError } = await supabase
@@ -36,7 +36,7 @@ export async function POST(req: Request) {
         attendanceData.map((record: any) => ({
           student_id: record.studentId,
           class_id: classId,
-          subject_id: subjectId,
+          subject_id: subjectId || null,
           teacher_id: teacher.id,
           date: dateObj.toISOString(),
           status: record.status,

@@ -42,11 +42,7 @@ const progressColors = [
 export default function StudentDashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [notifications, setNotifications] = useState<string[]>([
-    "Assignment Due: Data Structures",
-    "New class schedule updated",
-    "Attendance below 75% warning",
-  ]);
+  const [notifications, setNotifications] = useState<string[]>([]);
 
   useEffect(() => {
     fetchDashboard();
@@ -78,7 +74,7 @@ export default function StudentDashboard() {
     }
   };
 
-  const overall = data?.overallPercentage ?? 88;
+  const overall = data?.overallPercentage ?? 0;
   const streak = data?.currentStreak ?? 0;
   const todayPct = data?.todayPercentage ?? 0;
   const todayAttendance = data?.todayAttendance ?? [];

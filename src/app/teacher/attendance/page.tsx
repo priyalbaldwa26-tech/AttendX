@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Send, Calendar as CalendarIcon, AlertTriangle, CheckCircle, X, History, Edit3 } from "lucide-react";
+import { Send, Calendar as CalendarIcon, AlertTriangle, CheckCircle, X, History, Edit3, ClipboardCheck, BookOpen, Users } from "lucide-react";
 import toast from "react-hot-toast";
 import socket from "@/lib/socketClient";
 
@@ -18,6 +18,7 @@ export default function TeacherAttendance() {
   const [pastRecords, setPastRecords] = useState<any[]>([]);
   const [loadingPast, setLoadingPast] = useState(false);
   const [modifying, setModifying] = useState(false);
+  const [todaySessions, setTodaySessions] = useState<any[]>([]);
 
   const [assignments, setAssignments] = useState<any[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
@@ -29,6 +30,18 @@ export default function TeacherAttendance() {
   const [selectedDate, setSelectedDate] = useState(
     new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
   );
+
+  const fetchTodaySessions = async () => {
+    try {
+      const res = await fetch("/api/teacher/today");
+      if (res.ok) {
+        const data = await res.json();
+        setTodaySessions(Array.isArray(data) ? data : []);
+      }
+    } catch {
+      // silently ignore
+    }
+  };
 
   const fetchAssignments = async () => {
     try {
@@ -54,12 +67,15 @@ export default function TeacherAttendance() {
 
   useEffect(() => {
     fetchAssignments();
+    fetchTodaySessions();
   }, []);
 
   // When selected class changes, update available subjects
   useEffect(() => {
     if (selectedClass && assignments.length > 0) {
-      const releventAssignments = assignments.filter(a => a.class_id === selectedClass);
+      const releventAssignments = assignments.filter(
+        a => (a.class_id === selectedClass) && a.subject != null
+      );
       const uniqueSubjects = Array.from(new Map(releventAssignments.map(item => [item.subject.id, item.subject])).values()) as any[];
       setSubjects(uniqueSubjects);
       if (uniqueSubjects.length > 0) {
@@ -123,9 +139,10 @@ export default function TeacherAttendance() {
       
       const res = await fetch("/api/teacher/attendance", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           classId: selectedClass,
-          subjectId: selectedSubject,
+          subjectId: selectedSubject || null,
           date: new Date().toISOString(),
           attendanceData,
         }),
@@ -139,8 +156,11 @@ export default function TeacherAttendance() {
           timeStamp: new Date().toLocaleTimeString(),
         });
         setShowAbsentReview(false);
+        // Refresh today's session summary
+        fetchTodaySessions();
       } else {
-        toast.error("Failed to submit");
+        const errText = await res.text();
+        toast.error(errText || "Failed to submit");
       }
     } catch {
       toast.error("Something went wrong");
@@ -157,9 +177,9 @@ export default function TeacherAttendance() {
     }
     setLoadingPast(true);
     try {
-      const dateISO = new Date(pastDate).toISOString();
+      // Send plain date (YYYY-MM-DD) — API will handle the full-day range
       const res = await fetch(
-        `/api/teacher/attendance/modify?classId=${selectedClass}&subjectId=${selectedSubject}&date=${dateISO}`
+        `/api/teacher/attendance/modify?classId=${selectedClass}&subjectId=${selectedSubject}&date=${pastDate}`
       );
       const data = await res.json();
       if (Array.isArray(data)) {
@@ -211,8 +231,63 @@ export default function TeacherAttendance() {
     }
   };
 
+  const todayLabel = new Date().toLocaleDateString("en-IN", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
+
   return (
     <div className="h-full w-full space-y-4">
+
+      {/* ── Today's Submitted Sessions ── */}
+      {todaySessions.length > 0 && (
+        <div className="glass-card rounded-2xl p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="h-8 w-8 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
+              <ClipboardCheck size={16} className="text-emerald-500" />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Today's Submitted Attendance</p>
+              <p className="text-[10px] text-slate-400">{todayLabel}</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {todaySessions.map((session: any, i: number) => (
+              <div key={i} className="rounded-xl border border-slate-100 bg-white/60 p-4 flex flex-col gap-2">
+                {/* Class */}
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-lg bg-[#1e3a5f]/10 flex items-center justify-center shrink-0">
+                    <Users size={14} className="text-[#1e3a5f]" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-slate-800">{session.className}</p>
+                    {session.classYear && <p className="text-[10px] text-slate-400">Year: {session.classYear}</p>}
+                  </div>
+                </div>
+                {/* Subject */}
+                {session.subjectName && (
+                  <div className="flex items-center gap-2">
+                    <BookOpen size={13} className="text-blue-400 shrink-0" />
+                    <span className="text-xs font-semibold text-slate-600">
+                      {session.subjectName}
+                      {session.subjectCode && <span className="text-slate-400 font-normal ml-1">({session.subjectCode})</span>}
+                    </span>
+                  </div>
+                )}
+                {/* Stats */}
+                <div className="flex gap-2 mt-1">
+                  <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold">
+                    <CheckCircle size={11} />{session.present} Present
+                  </span>
+                  <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-rose-50 text-rose-600 text-xs font-bold">
+                    <X size={11} />{session.absent} Absent
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-400 font-mono mt-0.5">
+                  {new Date(session.submittedAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       {/* Mode Tabs */}
       <div className="flex gap-2">
         <button
