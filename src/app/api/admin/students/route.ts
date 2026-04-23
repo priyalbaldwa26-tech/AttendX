@@ -17,6 +17,20 @@ export async function POST(req: Request) {
       return new NextResponse('Missing required fields', { status: 400 })
     }
 
+    // Check if enrollment number already exists
+    const { data: existingStudent } = await supabase
+      .from('students')
+      .select('id')
+      .eq('student_id', enrollmentNumber)
+      .single()
+
+    if (existingStudent) {
+      return NextResponse.json(
+        { error: 'A student with this enrollment number already exists' },
+        { status: 409 }
+      )
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10)
 
     // Create virtual email from enrollment number
