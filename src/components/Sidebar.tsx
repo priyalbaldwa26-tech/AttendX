@@ -8,11 +8,11 @@ import {
   BookOpen,
   ClipboardCheck,
   Trophy,
-  Home,
   GraduationCap,
   BarChart3,
   UserCircle,
 } from "lucide-react";
+import AttendXLogo from "@/components/AttendXLogo";
 
 interface SidebarProps {
   role: "ADMIN" | "TEACHER" | "STUDENT";
@@ -60,9 +60,9 @@ export default function Sidebar({ role }: SidebarProps) {
       {/* App Icon */}
       <Link
         href={role === "ADMIN" ? "/admin" : role === "TEACHER" ? "/teacher" : "/student"}
-        className="flex items-center justify-center w-11 h-11 rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-500 text-white mb-4 shadow-lg hover:scale-105 transition-transform"
+        className="mb-4 hover:scale-105 transition-transform"
       >
-        <Home size={20} />
+        <AttendXLogo size={42} />
       </Link>
 
       {/* Menu Items */}

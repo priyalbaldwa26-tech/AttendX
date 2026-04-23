@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { checkConsecutiveAbsences, checkMonthlyNonConsecutiveAbsences } from '@/lib/attendanceAlerts'
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
@@ -14,8 +15,8 @@ export async function POST(req: Request) {
     const body = await req.json()
     const { classId, subjectId, date, attendanceData } = body
 
-    if (!classId || !subjectId || !date || !attendanceData) {
-      return new NextResponse('Missing required fields', { status: 400 })
+    if (!classId || !date || !attendanceData) {
+      return new NextResponse('Missing required fields: classId, date, attendanceData are required', { status: 400 })
     }
 
     const { data: teacher, error: teacherError } = await supabase
@@ -35,7 +36,7 @@ export async function POST(req: Request) {
         attendanceData.map((record: any) => ({
           student_id: record.studentId,
           class_id: classId,
-          subject_id: subjectId,
+          subject_id: subjectId || null,
           teacher_id: teacher.id,
           date: dateObj.toISOString(),
           status: record.status,
@@ -58,6 +59,29 @@ export async function POST(req: Request) {
       } else {
         await supabase.from('students').update({ current_streak: 0 }).eq('id', record.studentId)
       }
+    }
+
+    // ──── Trigger attendance alerts asynchronously (fire-and-forget) ────
+    const currentMonth = dateObj.getMonth() + 1
+    const currentYear = dateObj.getFullYear()
+
+    const absentStudentIds = attendanceData
+      .filter((r: any) => r.status === 'ABSENT')
+      .map((r: any) => r.studentId)
+
+    if (absentStudentIds.length > 0) {
+      // Run alert checks in background — don't await, don't block response
+      Promise.allSettled(
+        absentStudentIds.flatMap((studentId: string) => [
+          checkConsecutiveAbsences(studentId),
+          checkMonthlyNonConsecutiveAbsences(studentId, currentMonth, currentYear),
+        ])
+      ).then((results) => {
+        const failed = results.filter(r => r.status === 'rejected')
+        if (failed.length > 0) {
+          console.error('[ALERTS] Some alert checks failed:', failed)
+        }
+      })
     }
     
     return NextResponse.json({ message: 'Attendance recorded successfully', count: records?.length || 0 })

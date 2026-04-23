@@ -11,24 +11,10 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { name, enrollmentNumber, password, courseId, branchId, year } = await req.json()
+    const { name, enrollmentNumber, password, courseId, branchId, year, contactEmail } = await req.json()
 
     if (!name || !enrollmentNumber || !password) {
       return new NextResponse('Missing required fields', { status: 400 })
-    }
-
-    // Check if enrollment number already exists
-    const { data: existingStudent } = await supabase
-      .from('students')
-      .select('id')
-      .eq('student_id', enrollmentNumber)
-      .single()
-
-    if (existingStudent) {
-      return NextResponse.json(
-        { error: 'A student with this enrollment number already exists' },
-        { status: 409 }
-      )
     }
 
     const hashedPassword = await bcrypt.hash(password, 10)
@@ -36,14 +22,19 @@ export async function POST(req: Request) {
     // Create virtual email from enrollment number
     const virtualEmail = `${enrollmentNumber}@student.attendx.edu`
 
-    // 1. Create User
+    // 1. Create User (same name is allowed)
     const { data: user, error: userError } = await supabase
       .from('users')
       .insert([{ name, email: virtualEmail, password: hashedPassword, role: 'STUDENT' }])
       .select()
       .single()
 
-    if (userError) throw userError
+    if (userError) {
+      if (userError.code === '23505') {
+        return new NextResponse('Enrollment number already exists', { status: 400 })
+      }
+      throw userError
+    }
 
     // 2. Create Student Profile with course, branch, year
     const studentInsert: any = {
@@ -53,6 +44,7 @@ export async function POST(req: Request) {
     if (courseId) studentInsert.course_id = courseId
     if (branchId) studentInsert.branch_id = branchId
     if (year) studentInsert.year = year
+    if (contactEmail) studentInsert.contact_email = contactEmail
 
     const { error: studentError } = await supabase
       .from('students')
@@ -77,6 +69,7 @@ export async function GET() {
     const { data, error } = await supabase
       .from('students')
       .select('*, user:users(id, name, email, created_at), class:classes(id, name, year, department)')
+      .order('student_id', { ascending: true })
 
     if (error) throw error
 
@@ -95,7 +88,7 @@ export async function PUT(req: Request) {
   }
 
   try {
-    const { id, userId, name, enrollmentNumber, courseId, branchId, year } = await req.json()
+    const { id, userId, name, enrollmentNumber, courseId, branchId, year, contactEmail } = await req.json()
 
     if (!id || !userId || !name || !enrollmentNumber) {
       return new NextResponse('Missing required fields', { status: 400 })
@@ -115,6 +108,7 @@ export async function PUT(req: Request) {
       course_id: courseId || null,
       branch_id: branchId || null,
       year: year || null,
+      contact_email: contactEmail || null,
     }
 
     const { error: studentError } = await supabase

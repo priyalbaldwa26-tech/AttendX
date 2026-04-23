@@ -34,6 +34,7 @@ export default function AdminStudentsPage() {
     courseId: "",
     branchId: "",
     year: "",
+    contactEmail: "",
   });
 
   const [newPassword, setNewPassword] = useState("");
@@ -87,7 +88,7 @@ export default function AdminStudentsPage() {
       if (res.ok) {
         toast.success(`Student ${isEdit ? "updated" : "added"} successfully!`);
         setShowAddModal(false);
-        setFormData({ id: "", userId: "", name: "", enrollmentNumber: "", password: "", courseId: "", branchId: "", year: "" });
+        setFormData({ id: "", userId: "", name: "", enrollmentNumber: "", password: "", courseId: "", branchId: "", year: "", contactEmail: "" });
         fetchData();
       } else {
         const errData = await res.text();
@@ -168,7 +169,7 @@ export default function AdminStudentsPage() {
         <button
           onClick={() => {
             setModalMode("add");
-            setFormData({ id: "", userId: "", name: "", enrollmentNumber: "", password: "", courseId: "", branchId: "", year: "" });
+            setFormData({ id: "", userId: "", name: "", enrollmentNumber: "", password: "", courseId: "", branchId: "", year: "", contactEmail: "" });
             setShowAddModal(true);
           }}
           className="flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-emerald-700 active:scale-95 shadow-lg shadow-emerald-200"
@@ -284,6 +285,7 @@ export default function AdminStudentsPage() {
                               courseId: student.course_id || "",
                               branchId: student.branch_id || "",
                               year: student.year || "",
+                              contactEmail: student.contact_email || "",
                             });
                             setShowAddModal(true);
                           }}
@@ -413,6 +415,19 @@ export default function AdminStudentsPage() {
                     <option value="3rd Year">3rd Year</option>
                     <option value="4th Year">4th Year</option>
                   </select>
+                </div>
+
+                {/* Contact Email */}
+                <div>
+                  <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Contact Email <span className="text-slate-400 font-normal normal-case">(for alerts)</span></label>
+                  <input
+                    type="email"
+                    placeholder="e.g. student@gmail.com"
+                    value={formData.contactEmail}
+                    onChange={(e) => setFormData({ ...formData, contactEmail: e.target.value })}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500/20"
+                  />
+                  <p className="mt-1 text-[10px] text-slate-400">Used for attendance warnings & debarment alerts.</p>
                 </div>
 
                 {/* Password (only for add mode) */}
